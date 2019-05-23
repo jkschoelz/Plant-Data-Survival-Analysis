@@ -1,0 +1,198 @@
+---
+title: "Bayesian plant survival analysis"
+author: "Kevin Schoelz"
+date: "May 2019"
+output:
+  tufte::tufte_html:
+    toc: true
+    toc_depth: 1
+
+---
+
+
+```{r setup, include=FALSE}
+
+# Clear the environment
+rm(list = ls())
+gc(reset = TRUE)
+
+# Notebook Settings
+knitr::opts_chunk$set(
+  include = TRUE,
+  cache = TRUE,
+  collapse = TRUE,
+  echo = TRUE,
+  message = FALSE,
+  tidy = FALSE,
+  warning = FALSE,
+  comment = "  ",
+  dev = "png",
+  dev.args = list(bg = '#FFFFF8'),
+  dpi = 300,
+  fig.align = "center",
+  #fig.width = 7,
+  #fig.asp = 0.618,
+  fig.show = "hold",
+  out.width = "90%"
+)
+
+
+```
+
+
+In this notebook, we are looking how genotype of a given plant species will affect the plant resistance to disease. To do this we have data from the following experiment.
+
+Plants are of different genotypes are prepared. The plants are then all inoculated with the virus at the same time. Plants are observed once each day to see if symptoms have developed. The result is that we have a dataset with each plant labeled with an id, genotype, and when the plant developed local symptoms, and when it became generally symptomatic.
+
+We start by loading some useful libraries.
+
+```{r load_libraries}
+
+library(tidyverse)
+library(rstan)
+library(foreach)
+library(doParallel)
+library(tufte)
+library(bayesplot)
+library(cowplot)
+
+rstan_options(auto_write = TRUE)
+options(mc.cores = parallel::detectCores())
+
+#ggplot2 settings
+theme_set(theme_cowplot())
+
+```
+
+Next we want build the model. Let $y_{ng}$ be the day that we noted that the $n^{th}$ plant with $g$ genotype. For this first model, we will assume that we can determine with great precision the time in which these plants first develop symptoms. We will also assume that all of the plants are succesfully inoculated. (Both of these assumptions are probably wrong and will need to be revisited).
+
+Then, we can write down the model as 
+
+$$
+
+y_{ng} \sim \text{Weibull}\left( \alpha, \sigma \right)
+
+$$
+
+In order to determine priors for $\alpha$ and $\sigma$, we note that we expect symptoms to show up between 3-7 days after inoculation. Lets look at the probability distribution for the Weibull distribution.
+
+```{r}
+
+alpha = 5.0
+sigma = 5.0
+
+x = seq(0,15,length.out=100)
+pdf = dweibull(x, shape = sigma, scale = alpha)
+
+df <- data.frame(x, pdf)
+
+ggplot(data = df, aes(x=x, y=pdf)) +
+  geom_area()
+
+```
+
+Now let's use Stan to generate some fake data for us to try to recover.
+
+```{r generate_fake_data}
+
+true_data <- stan(file = "true_data_generating_process.stan", 
+                  iter = 1, 
+                  chains = 1,
+                  seed = 14324,
+                  algorithm = "Fixed_param")
+
+plantsurvival_df = as.data.frame(true_data) %>%
+  gather(key = "Plant_ID", value = "Day") %>%
+  arrange(by = Day) %>%
+  slice(2:n()) %>%
+  rowid_to_column()
+
+head(plantsurvival_df)
+
+ggplot(data = plantsurvival_df, aes(x = Day, y=rowid)) + 
+  geom_point(color = "DodgerBlue4") + 
+  ylab("Number of symptomatic plants")
+```
+
+Sample for the joint ensemble
+
+```{r}
+
+# Repitions
+R = 3
+Nobs = 15 
+
+joint_ensemble_data = list(Nobs = Nobs)
+
+joint_ensemble_fit <- stan(file='sample_joint_ensemble.stan', data=joint_ensemble_data,
+                      iter=R, warmup=0, chains=1,
+                      algorithm="Fixed_param")
+
+```
+
+
+```{r}
+
+joint_ensemble_df <- as.data.frame(joint_ensemble_fit)
+
+#head(joint_ensemble_df)
+
+ggplot(data = joint_ensemble_df, aes(x=alpha)) + 
+  geom_histogram(bins = 13, color = "black", fill = "dodgerblue4")
+
+simu_ys <- extract(joint_ensemble_fit)$y
+simu_alpha <- extract(joint_ensemble_fit)$alpha
+simu_sigma <- extract(joint_ensemble_fit)$sigma
+
+simu_list <- t(as.matrix(data.frame(simu_alpha, simu_sigma, simu_ys)))
+
+```
+
+```{r data_averaged_posterior}
+
+
+registerDoParallel(makeCluster(detectCores()))
+fit_model <- stan_model(file = "fit_data.stan")
+
+print("Hello??")
+
+ensemble_output <- foreach(simu=simu_list, .combine=cbind) %dopar% {
+  simu_alpha <- simu[1]
+  simu_sigma <- simu[2]
+  simu_ys <- simu[3:Nobs+2]
+  simu_N <- Nobs-1
+  simu_data <- list(Nobs = simu_N,
+                   yobs = simu_ys)
+  print("Everything okay?")
+  capture.output(library(rstan))
+  capture.output(fit <- sampling(fit_model, data = simu_data))
+
+  util <- new.env()
+  source('stan_utility.R', local=util)
+
+  warning_code <- util$check_all_diagnostics(fit, quiet=TRUE)
+
+  # Compute rank of prior draw with respect to thinned posterior draws
+  sbc_rank <- sum(simu_alpha < extract(fit)$alpha[seq(1, 4000 - 8, 8)])
+
+  # Compute posterior sensitivities
+  s <- summary(fit, probs = c(), pars='lam')$summary
+  post_mean_alpha <- s[,1]
+  post_sd_alpha <- s[,3]
+
+  prior_sd_alpha <- 6
+  z_score <- (post_mean_alpha - simu_alpha) / post_sd_alpha
+  shrinkage <- 1 - (post_sd_alpha / prior_sd_alpha)**2
+
+  c(warning_code, sbc_rank, z_score, shrinkage)
+
+}
+
+ensemble_ouput <- as.data.frame(t(ensemble_output))
+
+#colnames(ensemble_output) <- c("warning_codes", "sbc_rank", "z-score", "shrinkage")
+
+#head(ensemble_ouput)
+
+
+```
