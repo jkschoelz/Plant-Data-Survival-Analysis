@@ -1,0 +1,363 @@
+Trial.Name,Ecotype,First.Infection,Censored
+Test 1LL,Col,8,0
+Test 1LL,Col,8,0
+Test 1LL,Col,10,0
+Test 1LL,Col,10,0
+Test 1LL,Col,10,0
+Test 1LL,Col,10,0
+Test 1LL,Col,11,0
+Test 1LL,Col,11,0
+Test 1LL,Col,11,0
+Test 1LL,Col,11,0
+Test 1LL,Col,12,0
+Test 2LL,Col,8,0
+Test 2LL,Col,8,0
+Test 2LL,Col,8,0
+Test 2LL,Col,9,0
+Test 2LL,Col,9,0
+Test 2LL,Col,9,0
+Test 2LL,Col,9,0
+Test 2LL,Col,9,0
+Test 2LL,Col,9,0
+Test 2LL,Col,10,0
+Test 2LL,Col,10,0
+Test 2LL,Col,10,0
+Test 2LL,Col,12,0
+Test 3LL,Col,7,0
+Test 3LL,Col,7,0
+Test 3LL,Col,8,0
+Test 3LL,Col,8,0
+Test 3LL,Col,9,0
+Test 3LL,Col,9,0
+Test 3LL,Col,9,0
+Test 3LL,Col,9,0
+Test 3LL,Col,9,0
+Test 3LL,Col,9,0
+Test 3LL,Col,10,0
+Test 4LL,Col,7,0
+Test 4LL,Col,7,0
+Test 4LL,Col,7,0
+Test 4LL,Col,7,0
+Test 4LL,Col,8,0
+Test 4LL,Col,8,0
+Test 4LL,Col,8,0
+Test 4LL,Col,8,0
+Test 4LL,Col,9,0
+Test 4LL,Col,10,0
+Test 4LL,Col,10,0
+Test 4LL,Col,11,0
+Test 1LL,XI-K,9,0
+Test 1LL,XI-K,9,0
+Test 1LL,XI-K,10,0
+Test 1LL,XI-K,10,0
+Test 1LL,XI-K,10,0
+Test 1LL,XI-K,11,0
+Test 1LL,XI-K,12,0
+Test 2LL,XI-K,8,0
+Test 2LL,XI-K,8,0
+Test 2LL,XI-K,9,0
+Test 2LL,XI-K,10,0
+Test 2LL,XI-K,10,0
+Test 2LL,XI-K,10,0
+Test 3LL,XI-K,8,0
+Test 3LL,XI-K,8,0
+Test 3LL,XI-K,9,0
+Test 3LL,XI-K,9,0
+Test 3LL,XI-K,9,0
+Test 3LL,XI-K,9,0
+Test 3LL,XI-K,9,0
+Test 3LL,XI-K,9,0
+Test 3LL,XI-K,9,0
+Test 3LL,XI-K,9,0
+Test 3LL,XI-K,11,0
+Test 3LL,XI-K,11,0
+Test 4LL,XI-K,7,0
+Test 4LL,XI-K,7,0
+Test 4LL,XI-K,8,0
+Test 4LL,XI-K,8,0
+Test 4LL,XI-K,8,0
+Test 4LL,XI-K,8,0
+Test 4LL,XI-K,9,0
+Test 4LL,XI-K,9,0
+Test 4LL,XI-K,10,0
+Test 4LL,XI-K,10,0
+Test 4LL,XI-K,10,0
+Test 4LL,XI-K,10,0
+Test 4LL,XI-K,11,0
+Test 4LL,XI-K,11,0
+Test 1LL,XI-2,9,0
+Test 1LL,XI-2,10,0
+Test 1LL,XI-2,10,0
+Test 1LL,XI-2,12,0
+Test 1LL,XI-2,12,0
+Test 1LL,XI-2,12,0
+Test 2LL,XI-2,9,0
+Test 2LL,XI-2,10,0
+Test 2LL,XI-2,11,0
+Test 2LL,XI-2,13,0
+Test 2LL,XI-2,13,0
+Test 2LL,XI-2,13,0
+Test 3LL,XI-2,10,0
+Test 3LL,XI-2,10,0
+Test 3LL,XI-2,10,0
+Test 3LL,XI-2,10,0
+Test 3LL,XI-2,10,0
+Test 3LL,XI-2,10,0
+Test 4LL,XI-2,7,0
+Test 4LL,XI-2,7,0
+Test 4LL,XI-2,8,0
+Test 4LL,XI-2,8,0
+Test 4LL,XI-2,9,0
+Test 4LL,XI-2,9,0
+Test 4LL,XI-2,9,0
+Test 4LL,XI-2,9,0
+Test 4LL,XI-2,9,0
+Test 4LL,XI-2,9,0
+Test 4LL,XI-2,10,0
+Test 4LL,XI-2,10,0
+Test 4LL,XI-2,10,0
+Test 4LL,XI-2,10,0
+Test 4LL,XI-2,10,0
+Test 4LL,XI-2,10,0
+Test 1LL,VIII-A,8,0
+Test 1LL,VIII-A,8,0
+Test 1LL,VIII-A,9,0
+Test 1LL,VIII-A,9,0
+Test 1LL,VIII-A,10,0
+Test 1LL,VIII-A,10,0
+Test 1LL,VIII-A,11,0
+Test 2LL,VIII-A,8,0
+Test 2LL,VIII-A,8,0
+Test 2LL,VIII-A,8,0
+Test 2LL,VIII-A,9,0
+Test 2LL,VIII-A,9,0
+Test 3LL,VIII-A,7,0
+Test 3LL,VIII-A,7,0
+Test 3LL,VIII-A,8,0
+Test 3LL,VIII-A,8,0
+Test 3LL,VIII-A,8,0
+Test 3LL,VIII-A,8,0
+Test 3LL,VIII-A,8,0
+Test 3LL,VIII-A,8,0
+Test 3LL,VIII-A,11,0
+Test 3LL,VIII-A,11,0
+Test 3LL,VIII-A,12,0
+Test 3LL,VIII-A,12,0
+Test 4LL,VIII-A,8,0
+Test 4LL,VIII-A,8,0
+Test 4LL,VIII-A,8,0
+Test 4LL,VIII-A,8,0
+Test 4LL,VIII-A,8,0
+Test 4LL,VIII-A,8,0
+Test 4LL,VIII-A,9,0
+Test 4LL,VIII-A,9,0
+Test 4LL,VIII-A,9,0
+Test 4LL,VIII-A,9,0
+Test 4LL,VIII-A,10,0
+Test 4LL,VIII-A,10,0
+Test 1LL,VIII-B,8,0
+Test 1LL,VIII-B,8,0
+Test 1LL,VIII-B,8,0
+Test 1LL,VIII-B,9,0
+Test 1LL,VIII-B,9,0
+Test 1LL,VIII-B,9,0
+Test 1LL,VIII-B,9,0
+Test 1LL,VIII-B,10,0
+Test 1LL,VIII-B,10,0
+Test 2LL,VIII-B,8,0
+Test 2LL,VIII-B,9,0
+Test 2LL,VIII-B,9,0
+Test 2LL,VIII-B,9,0
+Test 2LL,VIII-B,9,0
+Test 2LL,VIII-B,10,0
+Test 2LL,VIII-B,10,0
+Test 3LL,VIII-B,7,0
+Test 3LL,VIII-B,7,0
+Test 3LL,VIII-B,7,0
+Test 3LL,VIII-B,8,0
+Test 3LL,VIII-B,8,0
+Test 3LL,VIII-B,8,0
+Test 3LL,VIII-B,8,0
+Test 3LL,VIII-B,9,0
+Test 3LL,VIII-B,11,0
+Test 4LL,VIII-B,7,0
+Test 4LL,VIII-B,8,0
+Test 4LL,VIII-B,8,0
+Test 4LL,VIII-B,8,0
+Test 4LL,VIII-B,9,0
+Test 4LL,VIII-B,9,0
+Test 4LL,VIII-B,9,0
+Test 4LL,VIII-B,10,0
+Test 4LL,VIII-B,10,0
+Test 4LL,VIII-B,11,0
+Test 1LL,XI-B,9,0
+Test 1LL,XI-B,9,0
+Test 1LL,XI-B,9,0
+Test 1LL,XI-B,9,0
+Test 1LL,XI-B,9,0
+Test 1LL,XI-B,9,0
+Test 1LL,XI-B,11,0
+Test 1LL,XI-B,11,0
+Test 1LL,XI-B,11,0
+Test 1LL,XI-B,11,0
+Test 2LL,XI-B,8,0
+Test 2LL,XI-B,8,0
+Test 2LL,XI-B,8,0
+Test 2LL,XI-B,8,0
+Test 2LL,XI-B,11,0
+Test 2LL,XI-B,11,0
+Test 3LL,XI-B,7,0
+Test 3LL,XI-B,7,0
+Test 3LL,XI-B,7,0
+Test 3LL,XI-B,7,0
+Test 3LL,XI-B,7,0
+Test 3LL,XI-B,7,0
+Test 3LL,XI-B,11,0
+Test 3LL,XI-B,11,0
+Test 3LL,XI-B,11,0
+Test 4LL,XI-B,7,0
+Test 4LL,XI-B,7,0
+Test 4LL,XI-B,7,0
+Test 4LL,XI-B,7,0
+Test 4LL,XI-B,7,0
+Test 4LL,XI-B,7,0
+Test 4LL,XI-B,9,0
+Test 4LL,XI-B,9,0
+Test 4LL,XI-B,9,0
+Test 4LL,XI-B,9,0
+Test 4LL,XI-B,9,0
+Test 4LL,XI-B,9,0
+Test 1LL,XI-A,8,0
+Test 1LL,XI-A,8,0
+Test 1LL,XI-A,9,0
+Test 1LL,XI-A,10,0
+Test 1LL,XI-A,10,0
+Test 1LL,XI-A,10,0
+Test 1LL,XI-A,10,0
+Test 1LL,XI-A,10,0
+Test 1LL,XI-A,11,0
+Test 1LL,XI-A,11,0
+Test 1LL,XI-A,11,0
+Test 1LL,XI-A,11,0
+Test 2LL,XI-A,8,0
+Test 2LL,XI-A,10,0
+Test 2LL,XI-A,10,0
+Test 2LL,XI-A,10,0
+Test 2LL,XI-A,10,0
+Test 3LL,XI-A,8,0
+Test 3LL,XI-A,8,0
+Test 3LL,XI-A,8,0
+Test 3LL,XI-A,8,0
+Test 3LL,XI-A,8,0
+Test 3LL,XI-A,8,0
+Test 3LL,XI-A,8,0
+Test 3LL,XI-A,8,0
+Test 3LL,XI-A,9,0
+Test 3LL,XI-A,9,0
+Test 3LL,XI-A,10,0
+Test 3LL,XI-A,10,0
+Test 3LL,XI-A,11,0
+Test 3LL,XI-A,11,0
+Test 4LL,XI-A,8,0
+Test 4LL,XI-A,8,0
+Test 4LL,XI-A,8,0
+Test 4LL,XI-A,8,0
+Test 4LL,XI-A,8,0
+Test 4LL,XI-A,9,0
+Test1LL,Col,14,1
+Test1LL,Col,14,1
+Test1LL,Col,14,1
+Test1LL,Col,14,1
+Test1LL,Col,14,1
+Test1LL,Col,14,1
+Test1LL,Col,14,1
+Test1LL,XI-K,14,1
+Test1LL,XI-K,14,1
+Test1LL,XI-K,14,1
+Test1LL,XI-K,14,1
+Test1LL,XI-K,14,1
+Test1LL,XI-K,14,1
+Test1LL,XI-K,14,1
+Test1LL,XI-K,14,1
+Test1LL,XI-2,14,1
+Test1LL,XI-2,14,1
+Test1LL,XI-2,14,1
+Test1LL,XI-2,14,1
+Test1LL,XI-2,14,1
+Test1LL,XI-2,14,1
+Test1LL,XI-2,14,1
+Test1LL,XI-2,14,1
+Test1LL,XI-2,14,1
+Test1LL,XI-2,14,1
+Test1LL,VIII-A,14,1
+Test1LL,VIII-A,14,1
+Test1LL,VIII-A,14,1
+Test1LL,VIII-A,14,1
+Test1LL,VIII-A,14,1
+Test1LL,VIII-A,14,1
+Test1LL,VIII-B,14,1
+Test1LL,VIII-B,14,1
+Test1LL,VIII-B,14,1
+Test1LL,VIII-B,14,1
+Test1LL,VIII-B,14,1
+Test1LL,VIII-B,14,1
+Test1LL,VIII-B,14,1
+Test1LL,XI-B,14,1
+Test1LL,XI-B,14,1
+Test1LL,XI-B,14,1
+Test1LL,XI-B,14,1
+Test1LL,XI-B,14,1
+Test1LL,XI-B,14,1
+Test1LL,XI-A,14,1
+Test1LL,XI-A,14,1
+Test2LL,Col,13,1
+Test2LL,XI-K,13,1
+Test2LL,XI-K,13,1
+Test2LL,XI-K,13,1
+Test2LL,XI-2,13,1
+Test2LL,XI-2,13,1
+Test2LL,VIII-A,13,1
+Test2LL,VIII-A,13,1
+Test2LL,VIII-A,13,1
+Test2LL,VIII-B,13,1
+Test2LL,VIII-B,13,1
+Test2LL,VIII-B,13,1
+Test2LL,XI-B,13,1
+Test2LL,XI-B,13,1
+Test2LL,XI-B,13,1
+Test2LL,XI-B,13,1
+Test2LL,XI-A,13,1
+Test2LL,XI-A,13,1
+Test2LL,XI-A,13,1
+Test2LL,XI-A,13,1
+Test2LL,XI-A,13,1
+Test3LL,Col,12,1
+Test3LL,Col,12,1
+Test3LL,XI-K,12,1
+Test3LL,XI-K,12,1
+Test3LL,XI-2,12,1
+Test3LL,XI-2,12,1
+Test3LL,XI-2,12,1
+Test3LL,XI-2,12,1
+Test3LL,XI-2,12,1
+Test3LL,XI-2,12,1
+Test3LL,XI-2,12,1
+Test3LL,XI-2,12,1
+Test3LL,VIII-A,12,1
+Test3LL,VIII-A,12,1
+Test3LL,VIII-B,12,1
+Test3LL,VIII-B,12,1
+Test3LL,VIII-B,12,1
+Test3LL,XI-B,12,1
+Test3LL,XI-B,12,1
+Test3LL,XI-B,12,1
+Test3LL,XI-A,12,1
+Test3LL,XI-A,12,1
+Test4LL,XI-K,11,1
+Test4LL,XI-K,11,1
+Test4LL,VIII-B,11,1
+Test4LL,XI-A,11,1
+Test4LL,XI-A,11,1
+Test4LL,XI-A,11,1
+Test4LL,XI-A,11,1
+Test4LL,XI-A,11,1

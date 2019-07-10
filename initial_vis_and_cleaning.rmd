@@ -1,0 +1,127 @@
+---
+title: "Plant Data"
+subtitle: "Initial visualization and data cleaning"
+author: "Kevin Schoelz"
+date: "`r Sys.Date()`"
+output:
+  tufte::tufte_html: default
+  tufte::tufte_handout: 
+    citation_package: natbib
+    latex_engine: pdflatex
+  tufte::tufte_book:
+    citation_package: natbib
+    latex_engine: pdflatex
+bibliography: skeleton.bib
+link-citations: yes
+---
+
+```{r setup, include=FALSE}
+library(tufte)
+# invalidate cache when the tufte version changes
+knitr::opts_chunk$set(tidy = FALSE, cache.extra = packageVersion('tufte'))
+options(htmltools.dir.version = FALSE)
+```
+
+# Introduction
+
+I have some experimental data I am looking at, and this is a notebook, to tidy up this data a bit, and do some preliminary visualizations. I have a dataset of some plants that have been inoculated by a virus on a single leaf. The plants are then watched for a few days, and we record the day on which the leaf begins to show signs of infection. There is another dataset out there that I do not have access to that records when the full plant has been infected. 
+
+The purpose of this notebook is to plot some of the raw data to get a better idea of what we are looking at, and to generate some cleaned data files, which will be useful for building probabilistic models.
+
+We can start by loading some useful libraries.
+
+```{r load_libraries, message=FALSE}
+
+library(tidyverse)
+library(readxl)
+
+```
+
+We can use the `readxl` package to load the original data. The original data is stored in two separate sheets in an excel file.
+
+```{r load_data, message=FALSE}
+
+# Load data and cache a csv snapshot of the excel file
+
+samples_df <- read_excel("Plant-Data-Tidy.xlsx", sheet = "Survival_cdf.Data") %>%
+  write_csv("Survival_cdf.csv")
+sampleSizes_df <- read_excel("Plant-Data-Tidy.xlsx", sheet = "Survival.Sample.Sizes") %>%
+  write_csv("sample_sizes.csv")
+
+head(samples_df)
+
+
+sampleSizes_df
+
+
+
+```
+
+
+We want to combine these datasets to get a dataset of $(y_{ng}, \nu_{ng})$ where $y_{ng}$ is the failure day of the $n\text{th}$ plant with genome $g$. $\nu_{ng}$ is the corresponding censoring variable, where $\nu_{ng} = 0$ means that the data was not censored and this was the actual failure day, and $\nu_{ng} = 1$ means the data was censored, the event did not occur and the recorded $y_{ng}$ is just the last day measurments were taken.
+
+We need to extract this data from the raw data tables above.
+
+```{r data_reshaping}
+Sizes_df <- sampleSizes_df %>%
+  gather("Ncens", "Nobs", "Ntot",
+         key = Size.Type,
+         value = Sample.Size)
+
+tidysamples_df <- samples_df %>%
+  gather(3:9, key = "Ecotype", value="Total.Infections") %>%
+  mutate(New.Infections = ifelse(Total.Infections == 0, 0, Total.Infections - lag(Total.Infections))) %>%
+  filter(New.Infections !=0) 
+
+y1 <- c()
+y2 <- c()
+y3 <- c()
+
+for(i in 1:nrow(tidysamples_df)){
+  y1 <- c(y1, rep(tidysamples_df$Trial[i], each = tidysamples_df$New.Infections[i]) )
+  y2 <- c(y2, rep(tidysamples_df$Ecotype[i], each = tidysamples_df$New.Infections[i]) )
+  y3 <- c(y3, rep(tidysamples_df$Day[i], each = tidysamples_df$New.Infections[i]) )
+}
+
+df = data.frame(Trial.Name = y1,
+                Ecotype = y2,
+                First.Infection = y3)
+
+df <- df %>% mutate(Censored = 0)
+
+# Add in censored data
+
+y1 <- c()
+y2 <- c()
+y3 <- c()
+
+for(i in 1:nrow(sampleSizes_df)){
+  y1 <- c(y1, rep(sampleSizes_df$Trial[i], each = sampleSizes_df$Ncens[i]))
+  y2 <- c(y2, rep(sampleSizes_df$Ecotype[i], each = sampleSizes_df$Ncens[i]))
+  y3 <- c(y3, rep(sampleSizes_df$ycens[i], each = sampleSizes_df$Ncens[i]))
+}
+
+censored_df = data.frame(Trial.Name = y1,
+                         Ecotype = y2,
+                         First.Infection = y3)
+
+censored_df <- censored_df %>% mutate(Censored = 1)
+
+df <- rbind(df, censored_df) %>%
+  write_csv("unpacked_plant_data.csv")
+
+df
+
+```
+
+# Plots 
+
+Lets use some plots to visualize the data. First lets look at how the censoring rate changed from trial to trial for the different genomes.
+
+```{r fig-margin, fig.margin=TRUE}
+
+ggplot(data = Sizes_df, aes(x = Size.Type, y=Sample.Size, color = Trial)) +
+  geom_point() +
+  facet_wrap(~Ecotype)
+
+```

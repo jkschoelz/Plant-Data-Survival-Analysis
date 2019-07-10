@@ -1,16 +1,33 @@
 data{
   int Nobs;
-  int yobs[Nobs];
+  int Ncens;
+  real yobs[Nobs];
+  real ycens[Ncens];
+}
+transformed data {
+  real yminus[Nobs];
+  int Ntot = Nobs + Ncens;
+  
+  for(n in 1:Nobs){
+    yminus[n] = yobs[n] - 1;
+  }
 }
 parameters{
   real<lower=0> alpha;
-  real<lower=0> sigma;
+  real beta;
 }
 model{
-  alpha ~ lognormal(5,2);
-  sigma ~ lognormal(5,2);
+  beta ~ normal(0,4);
+  alpha ~ lognormal(0,5);
   
-  for(n in 1:Nobs){
-    yobs[n] ~ weibull(alpha, sigma);
+  target += weibull_lpdf(yobs | alpha, exp(beta));
+  target += weibull_lccdf(ycens | alpha, exp(beta));
+}
+generated quantities {
+  real ypred[Ntot];
+  
+  for(n in 1:Ntot){
+    ypred[n] = weibull_rng(alpha, exp(beta));
   }
 }
+
