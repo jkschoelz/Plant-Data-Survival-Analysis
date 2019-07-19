@@ -2,10 +2,7 @@
 title: "Bayesian plant survival analysis"
 author: "Kevin Schoelz"
 date: "May 2019"
-output:
-  tufte::tufte_html:
-    toc: true
-    toc_depth: 1
+output: html_document
 
 ---
 
@@ -17,24 +14,7 @@ rm(list = ls())
 gc(reset = TRUE)
 
 # Notebook Settings
-knitr::opts_chunk$set(
-  include = TRUE,
-  cache = TRUE,
-  collapse = TRUE,
-  echo = TRUE,
-  message = FALSE,
-  tidy = FALSE,
-  warning = FALSE,
-  comment = "  ",
-  dev = "png",
-  dev.args = list(bg = '#FFFFF8'),
-  dpi = 300,
-  fig.align = "center",
-  #fig.width = 7,
-  #fig.asp = 0.618,
-  fig.show = "hold",
-  out.width = "90%"
-)
+knitr::opts_chunk$set(echo = TRUE)
 
 
 ```
@@ -50,13 +30,8 @@ To begin the analysis, we load some useful libraries.
 
 library(tidyverse)
 library(rstan)
-library(foreach)
-library(doParallel)
-library(tufte)
-library(bayesplot)
 library(cowplot)
-library(stringr)
-library(readxl)
+library(fastDummies)
 
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
@@ -68,21 +43,20 @@ theme_set(theme_cowplot())
 
 ## Importing and visualizing data
 
+We can start by importing the data. From previous notebook, the data has already been organized into a tidy format. 
+
 ```{r read-and-import-data}
 
-df <- read_excel("Plant-Data-Clean.xlsx", sheet = "Tidydata")
+df <- read.csv("unpacked_plant_data.csv")
+
+# Take the Ecotype Variable and separate it out into covariate columns
+df <- dummy_columns(df, select_columns = c("Ecotype", "Trial.Name"))
 
 head(df)
 
-# plot raw data
-
-## Plot histograms of censored vs uncensored data
-#ggplot(data <- df)
-
 ## Plot histograms of failure times for uncensored data
-ggplot(data = df %>% filter(Censored==0), aes(x= Failure.Date)) +
-  geom_histogram(color = "Black", fill = "DodgerBlue4") +
-  facet_wrap(~Genotype)
+ggplot(data = df %>% filter(Censored==0), aes(x= First.Infection, fill = Ecotype, alpha = 0.5)) +
+  geom_histogram(color = "Black", binwidth = 1, position = "stack")
 ```
 
 
@@ -100,27 +74,48 @@ Let's build a Stan model to fit the data.
 
 # set up the data
 
-uncensored_df <- df %>% filter(Censored==0, Genotype == "XI-2")
+uncensored_df <- df %>% filter(Censored==0, Ecotype == "XI-2")
 
-y = uncensored_df$Failure.Date
-N = length(y)
+y <- uncensored_df$First.Infection
 
-data = list(y=y,
-            N=N)
+Ecotype_Cols <- data.frame( X = colnames(uncensored_df)) %>% filter(startsWith(as.character(X), "Ecotype_"))
 
-fit <- stan(file = "fit_weibull_model01.stan",
+X <- uncensored_df %>% select(6:11)
+X <- as.matrix(X)
+N <- length(y)
+
+data = list(y = y,
+            X = X,
+            M = dim(X)[2],
+            N = dim(X)[1])
+
+fit <- stan(file = "fit_weibull_completepooling.stan",
             data = data,
             iter = 1000,
             chains = 4)
 
-pairs(fit)
+
 ```
+
 
 ```{r}
 
-summary(fit)
+summary_fit <- as.data.frame(summary(fit))
+
+summary_fit$row.number <- seq(1:nrow(summary_fit))
+
+
+
+ggplot(data = summary_fit, aes(x = row.number, y=summary.mean, ymin = summary.25., ymax=summary.75.)) +
+  geom_errorbar() +
+  geom_point() +
+  ylim(-5,15)
 
 ```
+
+
+
+
 
 
 
