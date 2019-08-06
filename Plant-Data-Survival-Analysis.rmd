@@ -2,7 +2,10 @@
 title: "Bayesian plant survival analysis"
 author: "Kevin Schoelz"
 date: "May 2019"
-output: html_document
+output:
+  tufte::tufte_html:
+    toc: true
+    toc_depth: 1
 
 ---
 
@@ -16,7 +19,6 @@ gc(reset = TRUE)
 # Notebook Settings
 knitr::opts_chunk$set(echo = TRUE)
 
-
 ```
 
 
@@ -26,12 +28,16 @@ Plants are of different genotypes are prepared. The plants are then all inoculat
 
 To begin the analysis, we load some useful libraries.
 
-```{r load_libraries}
+```{r load_libraries, message=FALSE}
 
 library(tidyverse)
+library(tidybayes)
+library(tufte)
 library(rstan)
 library(cowplot)
 library(fastDummies)
+library(survival)
+library(survminer)
 
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
@@ -39,55 +45,131 @@ options(mc.cores = parallel::detectCores())
 #ggplot2 settings
 theme_set(theme_cowplot())
 
+
 ```
 
-## Importing and visualizing data
+# Importing and visualizing data
 
-We can start by importing the data. From previous notebook, the data has already been organized into a tidy format. 
+We can start by importing the data. From previous notebook, the data has already been organized into a tidy format. One thing we want to do is expand the Ecotype column into a series of indicator columns. This will eventually serve as the basis for the covariate matrix.
 
 ```{r read-and-import-data}
 
 df <- read.csv("unpacked_plant_data.csv")
-
 # Take the Ecotype Variable and separate it out into covariate columns
 df <- dummy_columns(df, select_columns = c("Ecotype", "Trial.Name"))
 
-head(df)
+real_hist <- ggplot(data = df %>% filter(Censored == 0), aes(First.Infection)) + 
+  geom_histogram(binwidth = 1, color = "Black", fill = "DodgerBlue4") + 
+  facet_grid(Trial.Name ~ Ecotype)
 
-## Plot histograms of failure times for uncensored data
-ggplot(data = df %>% filter(Censored==0), aes(x= First.Infection, fill = Ecotype, alpha = 0.5)) +
-  geom_histogram(color = "Black", binwidth = 1, position = "stack")
+real_hist
+```
+
+## Kaplan Meier estimators
+
+We want to estimate the survival function for the various ecotypes. To start with, we are going to try to estimate the survival function using the Kaplan Meier estimator. We can do this using the `survival` package.
+
+```{r km-survival}
+
+surv_object <- Surv(time = df$First.Infection, event = ifelse(df$Censored==0, 1, 0))
+
+fit1 <- survfit(surv_object ~ df$Ecotype, data = df)
+
+#str(fit1)
+#summary(fit1)
+
+ggsurvplot(fit1, data = df) 
 ```
 
 
-## Building the first model.
 
-Let the failure time for the $i\text{th}$ plant of genotype $g$ be $y_{ig}$. We will model these separately for now. We assume
+# Weibull survival model with complete pooling
+
+We are going to fit a series of models to this data. In this notebook, we will be focusing on Cox proportional hazard models with Weibull hazard function, given below
 
 $$
-y_{ig} \sim \mathcal{W}(\alpha_{g}, \lambda_{g})
+h(y) = \frac{\alpha}{\sigma^{\alpha}}y^{\alpha-1}
+$$
+where $y$ is the time, $\alpha$ is the shape parameter of the Weibull distribution, and $\sigma$ is the scale parameter of the Weibull distribution.
+
+We can relate the scale parameter to the covariates by setting
+
+$$
+\sigma = \exp \left( \beta_{0} + X\beta \right)
+$$
+where $X$ is the $N \times M$ covariate matrix with $M$ covariates and $N$ data points, $\beta_{0}$ is the intercept parameter containing information about the environment not contained in the covariates and $\beta$ is a vector with $M$ elements representing the effects of the different variables.
+
+We can now write down our first probabilisitic model.
+
+$$
+\begin{alignat*}{6}
+&\beta_{0} &\sim &~N(0,10) \\
+&\beta & \sim & ~N(0,1) \\
+&\sigma & = & ~\exp \left( \beta_{0} + X\beta \right) \\
+&y_{obs} & \sim & \frac{\alpha}{\sigma}\left( \frac{y}{\sigma}\right)^{\alpha - 1}\exp \left( -\left( \frac{y}{\sigma} \right)^{\alpha} \right)
+\end{alignat*}
 $$
 
-Let's build a Stan model to fit the data.
+## Identify data and parameters
 
-```{r}
+We can use Stan to calculate the prior predictive distribution. For now, we will remove all censored data. We have reason to believe that most of the censored data consists of plants that will not show symptoms, so we will simply remove these from the data set for now. Later, we can analyze with a cure model in order to include this data.
 
-# set up the data
+```{r identify-the-data}
 
-uncensored_df <- df %>% filter(Censored==0, Ecotype == "XI-2")
+# Look at only uncensored data
+uncensored_df <- df %>% filter(Censored==0)
 
+# Extract First.Infection times
 y <- uncensored_df$First.Infection
 
+# Extract Covariate matrix
 Ecotype_Cols <- data.frame( X = colnames(uncensored_df)) %>% filter(startsWith(as.character(X), "Ecotype_"))
-
 X <- uncensored_df %>% select(6:11)
 X <- as.matrix(X)
-N <- length(y)
+
+# Get dimension sizes
+n_covariates = dim(X)[2]
+n_samples = dim(X)[1]
+
+```
+
+More stuff
+
+## Prior predictive check
+
+Before we fit the data, we want to get simulated data from our prior predictive distribution. This will allow us to check the validity of the model.
+
+```{r prior_predictive_distribution, message=FALSE}
+
+# Identify the data
+
+sjp_data = list(n_covariates = n_covariates,
+                n_samples = n_samples,
+                X = X)
+
+R = 10
+
+sjp_fit <- stan(file = "sjp_weibull_completepooling.stan",
+            data = sjp_data,
+            iter = R,
+            chains = 1,
+            algorithm = "Fixed_param")
+          
+
+```
+
+We can look at individual samples.
+
+## Model fitting
+
+More stuff
+
+```{r fit_data, message=FALSE}
 
 data = list(y = y,
             X = X,
-            M = dim(X)[2],
-            N = dim(X)[1])
+            n_covariates = dim(X)[2],
+            n_samples = dim(X)[1])
 
 fit <- stan(file = "fit_weibull_completepooling.stan",
             data = data,
@@ -97,25 +179,50 @@ fit <- stan(file = "fit_weibull_completepooling.stan",
 
 ```
 
+More stuff
 
-```{r}
+```{r fit_summary}
 
-summary_fit <- as.data.frame(summary(fit))
+pars = c("alpha", "beta0", "beta[1]", "beta[2]", "beta[3]", "beta[4]", "beta[5]", "beta[6]")
+
+summary_fit <- as.data.frame(summary(fit, pars = pars))
 
 summary_fit$row.number <- seq(1:nrow(summary_fit))
 
+pairs(fit, pars = pars)
 
-
-ggplot(data = summary_fit, aes(x = row.number, y=summary.mean, ymin = summary.25., ymax=summary.75.)) +
+ggplot(data = summary_fit, aes(x = row.number, y=summary.mean, ymin = summary.2.5., ymax=summary.97.5.)) +
   geom_errorbar() +
   geom_point() +
-  ylim(-5,15)
+  ylim(-0.5,0.5) +
+  xlim(0,10)
 
 ```
 
+More stuff
 
+## Posterior predictive check
 
+More stuff
 
+```{r posterior_predictive_check, echo=FALSE, include=FALSE}
 
+#yppf <- extract(fit)$yppf
+
+#yppf <- as.data.frame(yppf) %>%
+#  mutate(iteration = row_number()) %>%
+#  gather(1:n_samples, key = "Sample", value = "Time")
+
+#yppf
+
+#ppc_plot <- ggplot(yppf %>% filter(iteration==1), aes(Time)) +
+#  geom_histogram(position = "identity", binwidth = 1, fill = "White", color = "Black")
+
+    
+#ppc_plot
+#real_hist
+```
+
+More stuff
 
 
