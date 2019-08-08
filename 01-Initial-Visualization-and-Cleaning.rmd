@@ -1,0 +1,143 @@
+---
+title: "Plant Data"
+subtitle: "01 Initial visualization and cleaning"
+author: "Kevin Schoelz"
+date: "August 2019"
+output:
+  tufte::tufte_html:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, echo=FALSE, message=FALSE}
+
+# Clear the environment
+rm(list = ls())
+#gc(reset = TRUE, verbose = FALSE)
+
+# Notebook Settings
+knitr::opts_chunk$set(echo = FALSE)
+
+# Load Libraries
+library(tidyverse)
+library(tufte)
+library(cowplot)
+library(readxl)
+
+#ggplot2 settings
+theme_set(theme_cowplot())
+
+```
+
+We have an experiment where we are looking at the behavior of different ecotypes of a certain species of plant. In the experiment, the plant are inoculated by a virus. They are then observed once a day for several days to see when virus symptoms become apparent. There is reason to believe that maybe some of the ecotypes can slow the infection of the plant. Eventually, we want to analyze the data to see if we can observe any effect in the time-to-event data. But first, we need to prep the data files for use.
+
+Our data has been stored in an excel file, `tidyplants.xlsx`. The data is stored in two sheets. Our goal is to create three files that we can use:
+
+1.`tidyplants_cdf.csv`: This file will have the total number of infected plants as function of the day
+2.`tidyplants.csv`: This file will show for each plant when symptoms began to show up
+3.`tidyplants_withcontrol.csv`: This file is similar to `tidyplants.csv`, but with controls for each trial incorporated for each plant ecotype
+3.`tidyplants_sampleSizes.csv`: This file will show the total number of plants, total number of censored plants, and total number of uncensored plants for each trial/ecotype pair.
+
+# Importing the Data
+
+Our data has been stored in an excel file, `tidyplants.xlsx`. This excel file has two sheets containing the data in which we are interested. The first sheet shows the cumulative number of infected plants on a given day by trial and  ecotype. The other is a summary table showing the total number of plants of a given ecotype in each trial, along with the end breakdown of how many were infected vs how many survived. We can use the `merge` function to combine these two data table into one large dataframe. The first few rows of this larger dataframe have been reproduced here to give a feel for what this should look like.
+
+```{r load_data, message=FALSE, echo=FALSE}
+
+# Load data and cache a csv snapshot of the excel files
+
+# Load cdf data
+tidyplants_cdf <- read_excel("tidyplants.xlsx", sheet = "Survival_cdf.Data") %>%
+  gather(3:9, key = "Ecotype", value = "Total.Infections")
+
+# Load sample size/number of censored-uncensored data
+sampleSizes_df <- read_excel("tidyplants.xlsx", sheet = "Survival.Sample.Sizes") %>%
+  write_csv("tidyplants_sampleSizes.csv")
+
+# merger dataframes and store in .csv file
+tidyplants_cdf <- merge(tidyplants_cdf, sampleSizes_df, by = c("Trial.Name", "Ecotype")) %>%
+  write_csv("tidyplants_cdf.csv")
+
+# display
+knitr::kable(tidyplants_cdf %>% head)
+
+```
+
+## Visualizing the cumulative number of infected plants
+
+We have displayed the above data in a plot given below. The columns of the plot show the different Ecotypes of the plant. "Col" refers to the control line. Different rows show the different trials. It is hard to extract a lot of useful information from this because the amount of plants differ in each trial and ecotype.
+
+```{r cdf_vis, echo=FALSE}
+
+cdf_plots <- ggplot(data = tidyplants_cdf, aes(x = Day, y = Total.Infections)) +
+  geom_point(color = "DodgerBlue4") + 
+  geom_line(color = "Black") +
+  facet_grid(Trial.Name ~ Ecotype)
+
+cdf_plots
+
+```
+
+# How many new infections do we observe on a given day?
+
+One of the questions we will be interested in looking at is how many new infections we observe on a given day. This will be helpful for some of the data analysis we will be conducting later. We have extracted this data and stored it in the dataframe below.
+
+```{r data_reshaping, echo=FALSE}
+Sizes_df <- sampleSizes_df %>%
+  gather("Ncens", "Nobs", "Ntot",
+         key = Size.Type,
+         value = Sample.Size)
+
+tidyplants_pdf <- tidyplants_cdf %>%
+  mutate(New.Infections = ifelse(Total.Infections == 0, 0, Total.Infections - lag(Total.Infections))) %>%
+  filter(New.Infections !=0) 
+
+y1 <- c()
+y2 <- c()
+y3 <- c()
+
+for(i in 1:nrow(tidyplants_pdf)){
+  y1 <- c(y1, rep(tidyplants_pdf$Trial[i], each = tidyplants_pdf$New.Infections[i]) )
+  y2 <- c(y2, rep(tidyplants_pdf$Ecotype[i], each = tidyplants_pdf$New.Infections[i]) )
+  y3 <- c(y3, rep(tidyplants_pdf$Day[i], each = tidyplants_pdf$New.Infections[i]) )
+}
+
+df = data.frame(Trial.Name = y1,
+                Ecotype = y2,
+                First.Infection = y3)
+
+df <- df %>% mutate(Censored = 0)
+
+# Add in censored data
+
+y1 <- c()
+y2 <- c()
+y3 <- c()
+
+for(i in 1:nrow(sampleSizes_df)){
+  y1 <- c(y1, rep(sampleSizes_df$Trial.Name[i], each = sampleSizes_df$Ncens[i]))
+  y2 <- c(y2, rep(sampleSizes_df$Ecotype[i], each = sampleSizes_df$Ncens[i]))
+  y3 <- c(y3, rep(sampleSizes_df$ycens[i], each = sampleSizes_df$Ncens[i]))
+}
+
+censored_df = data.frame(Trial.Name = y1,
+                         Ecotype = y2,
+                         First.Infection = y3)
+
+censored_df <- censored_df %>% mutate(Censored = 1)
+
+df <- rbind(df, censored_df)
+
+df <- merge(df, sampleSizes_df, by = c("Trial.Name", "Ecotype")) %>%
+  write_csv("tidyplants.csv")
+
+newinfections_plot <- ggplot(data = df%>%filter(Censored == 0), aes(First.Infection)) +
+  geom_histogram(binwidth = 1, color = "Black", fill = "DodgerBlue4") +
+  facet_grid(Trial.Name ~ Ecotype)
+
+
+
+newinfections_plot
+
+```
+

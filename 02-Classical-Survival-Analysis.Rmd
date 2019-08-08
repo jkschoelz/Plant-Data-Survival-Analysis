@@ -1,5 +1,5 @@
 ---
-title: "Classical Survival Analysis"
+title: "02 Classical Survival Analysis"
 author: "Kevin Schoelz"
 date: "August 2019"
 output:
@@ -32,15 +32,24 @@ theme_set(theme_cowplot())
 
 ```
 
-We can start by loading up the data. In the grid of plots below, we are looking at the number of new infections observed on a given day. The data has been divided up so that different columns of plots show the behavior of a given ecotype. The control plants are in the left-most column. The different rows correspond to different trials. Each trial consists of plants that were inoculated at the same time. We expect that the different trials are probably not directly comparable due to uncontrolled environmental effects.
+We can start by loading up the data. There are three datafiles that we need to import from the previous notebook
+
+1. `tidyplants.csv`: Rows correspond to data on individual plants, columns contain variables
+2. `tidyplants_cdf.csv`: File has been rewritten in terms of what observations happened on a given day
+3. `tidyplants_cdf_withcontrol.csv`: 
+
+In the grid of plots below, we are looking at the number of new infections observed on a given day. The data has been divided up so that different columns of plots show the behavior of a given ecotype. The control plants are in the left-most column. The different rows correspond to different trials. Each trial consists of plants that were inoculated at the same time. We expect that the different trials are probably not directly comparable due to uncontrolled environmental effects.
 
 ```{r load-data, echo=FALSE}
 
-# Load data from csv file
-raw_df <- read.csv("unpacked_plant_data.csv")
+# Load data about new.infections pdf from csv file
+raw_df <- read.csv("tidyplants.csv")
+raw_cdf <- read.csv("tidyplants_cdf.csv")
+raw_cdf_with_control <- read.csv("tidyplants_cdf_withcontrol.csv")
 
 # Take the Ecotype Variable and separate it out into separate covariate columns
 df <- dummy_columns(raw_df, select_columns = c("Ecotype"))
+df_withcontrol <- read.csv("tidyplants_withcontrol.csv")
 
 # In general we will assumed censored plants do not show symptoms
 # This is an assumption, that we should evaluate the liklihood of it being true, given our fit
@@ -54,38 +63,6 @@ real_hist <- ggplot(data = uncensored_df, aes(First.Infection)) +
 
 real_hist
 
-head(raw_df)
-
-```
-
-We can look at this another way by calculating the cumulative number of infected plants on a given day.
-
-```{r Cumulative-Infections, echo = FALSE}
-
-cumulative_df <- raw_df %>%
-  distinct(Trial.Name, Ecotype)
-
-cumulative_df <- data.frame(Trial.Name = rep(cumulative_df$Trial.Name, each = 14),
-                            Ecotype = rep(cumulative_df$Ecotype, each = 14), 
-                            Day = rep(1:14, times = length(cumulative_df$Ecotype)))
-
-get_new_infections <- function(trial, eco, day) {
-    new_infections <- raw_df %>% filter(identical(trial, Trial.Name),
-                                    identical(eco, Ecotype),
-                                    day == First.Infection) %>%
-      summarise(n())
-    new_infections <- new_infections$n
-}
-
-get_new_infections("Trial1LL", "Col", 10)
-
-
-cumulative_df <- cumulative_df %>%
-  mutate(New.Infections = pmap(list(trial = Trial.Name, 
-                                    eco = Ecotype, 
-                                    day = Day), 
-                               .f = get_new_infections)[[1]])
-cumulative_df
 ```
 
 # Terminology of a Survival analysis
@@ -160,56 +137,52 @@ We want to fit the plant data. We need to fit separately by ecotype and trial. D
 
 The following plot shows the Kaplan-Meier estimate of the survival function for each ecotype in each trial. Control plants for each trial have been included as well. We calculate p-values from a chi-squared test in
 
+```{r Cumulative-Infections, echo = FALSE}
+
+cdf <- raw_cdf_with_control %>%
+  mutate(Prop.Infected = Total.Infections/Nobs,
+         Prop.Survived = 1 - Prop.Infected)
+
+cdf_plot <- ggplot() +
+  geom_step(data = cdf %>% filter(Control == 1),
+            aes(x = Day, y = Prop.Survived),
+            color = "Red", size = 1) +
+  geom_step(data = cdf %>% filter(Control == 0),
+            aes(x = Day, y = Prop.Survived),
+            color = "DodgerBlue4", size = 1) +
+  facet_grid(Trial.Name ~ Ecotype) +
+  xlim(5,15) +
+  theme(axis.text.x = element_text(angle = 90)) 
+
+cdf_plot
+  
+
+```
+
+Below we have taken the Kaplan Meier estimate for the different trials and ecotypes. The control samples are plotted in red. The estimate of the Ecotypes survival function is plotted in blue.
+
 ```{r kaplan-meier-estimate, echo=FALSE}
 
-kaplan_meier_model <- function(df) {
-  surv_obj <- Surv(time = df$First.Infection)
-  surv_fit <-survfit(surv_obj ~ Ecotype, data = df)
-  #surv_fit <- tidy(surv_fit)
+Eco_list <- c("VIII-A", "VIII-B", "XI-2", "XI-A", "XI-B", "XI-K")
+Trial_list <- c("Test2LL", "Test3LL", "Test4LL")
+
+plots = c()
+
+for (eco in Eco_list){
+  for (trial in Trial_list) {
+    temp_df <- df_withcontrol %>% filter(Ecotype == eco, Trial.Name == trial)
+    surv_obj <- Surv(time = temp_df$First.Infection, event = ifelse(temp_df$Censored==0,1,0))
+    fit <- survfit(surv_obj ~ temp_df$Control, data = temp_df)
+    print(ggsurvplot(fit, data = temp_df, pval = TRUE, conf.int = TRUE, title = paste0(eco, trial, sep = ", ")))
+  }
 }
-
-# Create experiment with control
-filtered_df <- df %>%
-  filter(Trial.Name == "Test 1LL" & (Ecotype == "Col" | Ecotype == "XI-B"))
-
-#fit <- kaplan_meier_model(filtered_df)
 
 
 ```
 
-```{r, echo=FALSE}
+```{r}
 
-# Define kaplan meier fitting function using survival package
-kaplan_meier_model <- function(df) {
-  surv_obj <- Surv(time = df$First.Infection)
-  surv_fit <-survfit(surv_obj ~ 1, data = df)
-  surv_fit <- tidy(surv_fit)
-}
-
-kaplan_meier_model_stats <- function(df) {
-  surv_obj <- Surv(time = df$First.Infection)
-  surv_fit <-survfit(surv_obj ~ 1, data = df)
-  surv_fit <- glance(surv_fit)
-}
-
-# Apply to trials in original dataframe
-nested_km_df <- df %>%
-  group_by(Trial.Name, Ecotype) %>%
-  nest() %>%
-  mutate(model = map(data, kaplan_meier_model),
-         model_stats = map(data, kaplan_meier_model_stats))
-
-km_models_df <- nested_km_df %>%
-  unnest(model)
-
-#models_df
-
-ggplot(data = km_models_df, aes(x = time, y = estimate, color = Ecotype)) + 
-  geom_step(size = 1, color = "DodgerBlue4") +
-  facet_grid(Trial.Name ~ Ecotype)
-
-#ggsurvplot_list(fit = nested_df$model, data <- )
-
+str(plots)
 
 ```
 
