@@ -1,5 +1,5 @@
 ---
-title: "02 Classical Survival Analysis"
+title: "02 Kaplan-Meier Analysis"
 author: "Kevin Schoelz"
 date: "August 2019"
 output:
@@ -8,7 +8,7 @@ output:
     toc_depth: 2
 ---
 
-We have an experiment where we are looking at the behavior of different ecotypes of a certain species of plant. In the experiment, the plant are inoculated by a virus. They are then observed once a day for several days to see when virus symptoms become apparent. There is reason to believe that maybe some of the ecotypes can slow the infection of the plant.
+We have an experiment where we are looking at the behavior of different ecotypes of a certain species of plant. In the experiment, the plant are inoculated by a virus. They are then observed once a day for several days to see when virus symptoms become apparent. There is reason to believe that maybe some of the ecotypes can slow the infection of the plant. In this notebook, we want to analyze the data using the Kaplan Meier method.
 
 ```{r setup, echo=FALSE, message=FALSE}
 
@@ -36,7 +36,6 @@ We can start by loading up the data. There are three datafiles that we need to i
 
 1. `tidyplants.csv`: Rows correspond to data on individual plants, columns contain variables
 2. `tidyplants_cdf.csv`: File has been rewritten in terms of what observations happened on a given day
-3. `tidyplants_cdf_withcontrol.csv`: 
 
 In the grid of plots below, we are looking at the number of new infections observed on a given day. The data has been divided up so that different columns of plots show the behavior of a given ecotype. The control plants are in the left-most column. The different rows correspond to different trials. Each trial consists of plants that were inoculated at the same time. We expect that the different trials are probably not directly comparable due to uncontrolled environmental effects.
 
@@ -65,12 +64,14 @@ real_hist
 
 ```
 
-# Terminology of a Survival analysis
+# Kaplan Meier Analysis
+
+## Survival Models
 
 In a survival analysis, we have some object, (people, plants, machine etc...) that can undergo some type of event. In a survival analysis, our goal is to estimate the time until the event happens. The canonical example would be to analyze mortality curves, i.e. to estimate time until death for people who undergo some type of treatment. But the mathematical framework is more general than that. We can use survival analysis to analyze time until a disease shows up (as we will do here), or even time until a given part fails on a machine. It is a very general and powerful framework. 
 In survival analysis, we are trying to estimate a series of functions. We have the probability distribution function $f(y)$ which gives the probability of a new infection occuring on day $y$. There is the cumulative distribution function, $F(y)$ which gives the probability that the event has occured by day $y$. Finally we have the survival function $S(y) = 1 - F(y)$ which gives the probability of a given individual surviving until day $y$. Classically, the goal of a survival analysis is to estimate the survival function $S(y)$.
 
-## Estimating the survival function
+## Estimating the survival function using the Kaplan-Meier method
 
 How do we estimate the survival function? This is a big question, and there are a lot of different approaches. Let's generate some fake survival data to try and get a better feel for how to answer this question. Suppose we have some time until event data. This data is drawn from the following true survival function, as given below.
 
@@ -83,9 +84,12 @@ y <- seq(1, 15, 0.1)
 alpha = 10
 sigma = 10
 
+
+
 S <- exp(-(y/sigma)^alpha)
 
-surv_ex_df <- data.frame(Survival = S, Time = y)
+
+surv_ex_df <- data.frame("Time" = y, "Survival" = S)
 
 # Simulate data from Weibull distribution
 n_samples <- 20               # 20 individuals
@@ -110,6 +114,7 @@ surv_df <- simulate_df %>%
          cum_surv_prob = cumprod(surv_prob),
          proportion = 1 - n_infected_total/n_plants)
 
+
 knitr::kable(surv_df)
 
 ```
@@ -131,7 +136,17 @@ ggplot(data = surv_df) +
 
 A plot of the Survival function is shown in the margin. The dashed line shows the "true" survival function, while the solid line shows the Kaplan-Meier estimate as generated from the observed data.
 
-# Using the Kaplan-Meier estimate of the survival function
+## Comparing survival curves using the log-rank test
+
+Suppose we are taking survival data from two different groups. This might be a treatment and a control group. We would like to be able to say whether or not the groups seem distinct. A non-parametric approach would be to use the Log-Rank test. In this test, at each time step we look at new infections in each group compared to the total healthy population in the time before. We also look at the two groups together. We can compute the $\chi^{2}$ statistic by calculating
+
+$$
+\chi^{2} = \frac{\left(E_{A} - O_{A}\right)^{2}}{E_{A}} + \frac{\left(E_{B} - O_{B}\right)^{2}}{E_{B}}
+$$
+
+For a single timestep like this, we have one degree of freedom. We can use the $\chi^{2}$ test statistic in order to compute the liklihood that both groups come from the same distribution. (In other words, the treatment is ineffective.) We can calculate a $p$ value by comparing the two groups, and reject the null hypothesis (that the two groups are equivalent) if $p < 0.05$.
+
+# Kaplan Meier analysis of the plant data
 
 We want to fit the plant data. We need to fit separately by ecotype and trial. Data has been stored in in the dataframe `df`.
 
@@ -154,9 +169,6 @@ cdf_plot <- ggplot() +
   xlim(5,15) +
   theme(axis.text.x = element_text(angle = 90)) 
 
-cdf_plot
-  
-
 ```
 
 Below we have taken the Kaplan Meier estimate for the different trials and ecotypes. The control samples are plotted in red. The estimate of the Ecotypes survival function is plotted in blue.
@@ -164,64 +176,21 @@ Below we have taken the Kaplan Meier estimate for the different trials and ecoty
 ```{r kaplan-meier-estimate, echo=FALSE}
 
 Eco_list <- c("VIII-A", "VIII-B", "XI-2", "XI-A", "XI-B", "XI-K")
-Trial_list <- c("Test2LL", "Test3LL", "Test4LL")
+Trial_list <- c("Test1LL", "Test2LL", "Test3LL", "Test4LL")
 
-plots = c()
+splots <- list()
 
 for (eco in Eco_list){
   for (trial in Trial_list) {
     temp_df <- df_withcontrol %>% filter(Ecotype == eco, Trial.Name == trial)
     surv_obj <- Surv(time = temp_df$First.Infection, event = ifelse(temp_df$Censored==0,1,0))
     fit <- survfit(surv_obj ~ temp_df$Control, data = temp_df)
-    print(ggsurvplot(fit, data = temp_df, pval = TRUE, conf.int = TRUE, title = paste0(eco, trial, sep = ", ")))
+    print(ggsurvplot(fit, data = temp_df, conf.int = TRUE, pval = TRUE, theme = theme_cowplot()))
   }
 }
 
 
 ```
 
-```{r}
-
-str(plots)
-
-```
 
 
-
-# Using the Cox proportional hazards model
-
-Another technique we can use to fit the data uses the Cox proportional hazards model. The Kaplan-Meier estimator is a non-parametric estimate of the survival function. It is extraordinarily flexible method, however, it does not allow for the use of covariates. 
-
-Another approach is the Cox proportional hazards method. In the Cox proportional hazards method, we can estimate a Hazard function
-
-$$
-h(y) = h_{0}\exp \left(\beta_{0} + X\beta\right)
-$$
-The Survival function is then given by
-
-$$
-S(y) = \exp \left( \int_{0}^{t} h(u)du \right)
-$$
-The `survival` package can be used estimate the coefficients for the Cox proportional hazard models.
-
-```{r coxph, echo=FALSE}
-
-coxph_model <- function(df) {
-  res.cox <- coxph(Surv(time = First.Infection) ~ Ecotype, data = df)
-  cox_summary <- summary(res.cox)
-}
-
-nested_coxph_df <- df %>%
-  group_by(Trial.Name) %>%
-  nest() %>%
-  mutate(coxph_models = map(data, coxph_model))
-
-#str(nested_coxph_df$coxph_models[1])
-#nested_coxph_df$coxph_models[1]
-
-
-```
-
-
-
-# Linear Model
