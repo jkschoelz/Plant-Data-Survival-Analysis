@@ -1,0 +1,128 @@
+---
+title: "02 Kaplan-Meier Analysis"
+author: "Kevin Schoelz"
+date: "August 2019"
+output:
+  tufte::tufte_html:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, echo=FALSE, message=FALSE}
+
+# Clear the environment
+rm(list = ls())
+#gc(reset = TRUE, verbose = FALSE)
+
+# Notebook Settings
+knitr::opts_chunk$set(echo = FALSE)
+
+library(tidyverse)
+library(broom)
+library(tufte)
+library(cowplot)
+library(fastDummies)
+library(rstan)
+
+#ggplot2 settings
+theme_set(theme_cowplot())
+
+```
+
+
+Let's begin a Bayesian analysis of this data. As I see it, we have two problems with the data. The first problem, is that due to experimental limitations, we have lots of trials where we might have as few as five plants in a trial. But we can't just pool the trials together, because we thin, environmental effects (which should be negligible when comparing plants in the same trial), might be significant, and could be even larger than the effect of the ecotype of the plant. No pooling on the other hand will leave us with many trials that are functionally too small to say anything useful about. The 
+
+# Model
+
+$$
+\begin{alignat}{2}
+\alpha & \sim  \mathcal{N}^{+}(0,10) \\
+\beta_{0k} & \sim  \mathcal{N}(0,1) \\
+\beta_{j} & \sim  \mathcal{N}(0,1) \\
+y_{ijk} &\sim \mathcal{W}(\alpha, \beta_{0i} + \beta_{j} x_{jk})
+\end{alignat}
+$$
+where $\alpha$ is the shape parameter and $\sigma = \beta_{0i} + \beta_{j}x_{jk}$ is the scale parameter.
+
+# Data and Parameters
+
+Our data is simple. For each plant, we have recorded the ecotype, the trial in which the plant was engaged, the length of the trial, whether or not the plant displayed signs of infection, and the day on which the plant first showed signs of infection. 
+
+Our parameters are $\alpha$, the hazard intercept for the $j$th group $\beta_{0j}$ and the hazard slopes of the various ecotypes $\beta_{j}$.  
+
+The relavent statistics we are interested in are 
+
+$$
+\begin{alignat}{4}
+\mu &= \text{Median survival time}\\
+\mu &= \text{Mean survival time}\\
+y_{min} &= \text{Quickest time to first infection}\\
+y_{max} &= \text{Slowest time to first infection}\\
+\end{alignat}
+$$
+
+## Importing the data
+
+Let's import the data, and form the covariate matrix, $X$.
+
+```{r import-data}
+
+df <- read.csv("tidyplants.csv")
+
+df <- df %>% 
+  dummy_cols(select_columns = c("ecotype", "trial_name"))
+
+covariate_names <- c("ecotype_VIII-A",
+                      "ecotype_VIII-B",
+                      "ecotype_XI-2",
+                      "ecotype_XI-A",
+                      "ecotype_XI-B",
+                      "ecotype_XI-K",
+                      "trial_name_Test1LL",
+                      "trial_name_Test2LL",
+                      "trial_name_Test3LL",
+                      "trial_name_Test4LL")
+
+uncensored_df <- df %>%
+  filter(censored == 0)
+
+X <- uncensored_df %>%
+  dplyr::select(covariate_names) %>%
+  as.matrix
+
+y <- uncensored_df$first_infection
+
+n_ecotypes <- 6
+n_trials <- 4
+n_covariates <- n_ecotypes + n_trials
+n_samples <- length(y)
+
+```
+
+
+# Sample from the joint probability
+
+To make sure the model is running properly, we need to be able to sample from the joint probability function. Let use Stan to build a probabilistic model, and then we can sample from the model to see what kind of results are possible.
+
+```{r sample-joint-prior}
+
+sjp_data <- list(n_covariates = n_covariates,
+                 n_samples = n_samples,
+                 X = X)
+
+if(!file.exists("sjp_fit.rds")){
+  sjp_fit <- stan(file = "sjp_weibull_partialpooling.stan",
+                data = sjp_data,
+                iter = 1,
+                chains = 1,
+                algorithm = "Fixed_param")
+
+  saveRDS(sjp_fit, file = "sjp_fit.rds")  
+} else {
+  sjp_fit <- readRDS("sjp_fit.rds")
+}
+
+
+summary(sjp_fit)
+
+```

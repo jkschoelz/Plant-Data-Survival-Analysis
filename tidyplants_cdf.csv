@@ -1,4 +1,4 @@
-Trial.Name,Ecotype,Day,Total.Infections,Ntot,Nobs,Ncens,ycens
+trial_name,ecotype,day,total_infections,Ntot,Nobs,Ncens,ycens
 Test1LL,Col,1,0,18,11,7,14
 Test1LL,Col,2,0,18,11,7,14
 Test1LL,Col,3,0,18,11,7,14

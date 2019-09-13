@@ -1,4 +1,4 @@
-Trial.Name,Ecotype,Ntot,Nobs,Ncens,ycens
+trial_name,ecotype,Ntot,Nobs,Ncens,ycens
 Test1LL,Col,18,11,7,14
 Test1LL,XI-K,15,7,8,14
 Test1LL,XI-2,16,6,10,14

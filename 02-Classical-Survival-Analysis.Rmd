@@ -17,7 +17,7 @@ rm(list = ls())
 #gc(reset = TRUE, verbose = FALSE)
 
 # Notebook Settings
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 
 library(tidyverse)
 library(broom)
@@ -47,18 +47,18 @@ raw_cdf <- read.csv("tidyplants_cdf.csv")
 raw_cdf_with_control <- read.csv("tidyplants_cdf_withcontrol.csv")
 
 # Take the Ecotype Variable and separate it out into separate covariate columns
-df <- dummy_columns(raw_df, select_columns = c("Ecotype"))
+df <- dummy_columns(raw_df, select_columns = c("ecotype"))
 df_withcontrol <- read.csv("tidyplants_withcontrol.csv")
 
 # In general we will assumed censored plants do not show symptoms
 # This is an assumption, that we should evaluate the liklihood of it being true, given our fit
 uncensored_df <- df %>%
-  filter(Censored == 0)
+  filter(censored == 0)
 
 # Plot data in 2D grid of histograms - Trial vs Ecotype
-real_hist <- ggplot(data = uncensored_df, aes(First.Infection)) + 
+real_hist <- ggplot(data = uncensored_df, aes(first_infection)) + 
   geom_histogram(binwidth = 1, color = "Black", fill = "DodgerBlue4") + 
-  facet_grid(Trial.Name ~ Ecotype)
+  facet_grid(trial_name ~ ecotype)
 
 real_hist
 
@@ -134,63 +134,128 @@ ggplot(data = surv_df) +
 ```
 
 
-A plot of the Survival function is shown in the margin. The dashed line shows the "true" survival function, while the solid line shows the Kaplan-Meier estimate as generated from the observed data.
+A plot of the Survival function is shown in the margin. The dashed line shows the "true" survival function, while the solid line shows the Kaplan-Meier estimate as generated from the observed data. Note, for the Kaplan-Meier estimate, we use a stepping function, as there is no empirical reason to change the probability until we see failure events.
 
 ## Comparing survival curves using the log-rank test
 
-Suppose we are taking survival data from two different groups. This might be a treatment and a control group. We would like to be able to say whether or not the groups seem distinct. A non-parametric approach would be to use the Log-Rank test. In this test, at each time step we look at new infections in each group compared to the total healthy population in the time before. We also look at the two groups together. We can compute the $\chi^{2}$ statistic by calculating
+Suppose we are taking survival data from two different groups. This might be a treatment and a control group. We would like to be able to say whether or not the groups seem distinct. A non-parametric approach would be to use the Log-Rank test. In this test, at each time step we look at new infections in each group compared to the total healthy population in the time before. We also look at the two groups together. In this way we can see how the statistics of the two groups compare to the statistics of a single group containing all of the individuals. We can estimate the probability that one group could produce these results using the $\chi^{2}$ statistic.
 
 $$
 \chi^{2} = \frac{\left(E_{A} - O_{A}\right)^{2}}{E_{A}} + \frac{\left(E_{B} - O_{B}\right)^{2}}{E_{B}}
 $$
 
-For a single timestep like this, we have one degree of freedom. We can use the $\chi^{2}$ test statistic in order to compute the liklihood that both groups come from the same distribution. (In other words, the treatment is ineffective.) We can calculate a $p$ value by comparing the two groups, and reject the null hypothesis (that the two groups are equivalent) if $p < 0.05$.
+For a single timestep like this, we have one degree of freedom. We can use the $\chi^{2}$ test statistic in order to compute the liklihood that both groups come from the same distribution. We can calculate a $p$ value by comparing the two groups, and reject the null hypothesis (that the two groups are equivalent) if $p < 0.05$.
 
-# Kaplan Meier analysis of the plant data
+# Kaplan Meier Analysis
 
-We want to fit the plant data. We need to fit separately by ecotype and trial. Data has been stored in in the dataframe `df`.
+With some slight changes to the `tidyplants_cdf.csv` file we can get the Kaplan Meier analysis.
 
-The following plot shows the Kaplan-Meier estimate of the survival function for each ecotype in each trial. Control plants for each trial have been included as well. We calculate p-values from a chi-squared test in
+```{r}
 
-```{r Cumulative-Infections, echo = FALSE}
+tidyplants_cdf <- read.csv("tidyplants_cdf.csv")
 
-cdf <- raw_cdf_with_control %>%
-  mutate(Prop.Infected = Total.Infections/Nobs,
-         Prop.Survived = 1 - Prop.Infected)
+tidyplants_cdf <- tidyplants_cdf %>%
+  group_by(trial_name, ecotype) %>%
+  mutate(new_infections = ifelse(day == 1, 0, total_infections - lag(total_infections)),
+         healthy_pool = ifelse(day == 1, Ntot, Ntot - lag(total_infections)),
+         prop = 1 - new_infections/healthy_pool,
+         km_survival = cumprod(prop),
+         km_helpercol1 = new_infections/(healthy_pool + new_infections),
+         km_stan_error = km_survival*sqrt(cumsum(km_helpercol1)),
+         km_95conf = 1.96*km_stan_error,
+         km_95upper = km_survival + km_95conf,
+         km_95lower = km_survival - km_95conf)
 
-cdf_plot <- ggplot() +
-  geom_step(data = cdf %>% filter(Control == 1),
-            aes(x = Day, y = Prop.Survived),
-            color = "Red", size = 1) +
-  geom_step(data = cdf %>% filter(Control == 0),
-            aes(x = Day, y = Prop.Survived),
-            color = "DodgerBlue4", size = 1) +
-  facet_grid(Trial.Name ~ Ecotype) +
-  xlim(5,15) +
-  theme(axis.text.x = element_text(angle = 90)) 
+treatments <- tidyplants_cdf %>%
+  filter(ecotype != "Col") %>%
+  rename(total_infections_treat = total_infections,
+         Ntot_treat = Ntot,
+         Nobs_treat = Nobs,
+         Ncens_treat = Ncens,
+         ycens_treat = ycens,
+         new_infections_treat = new_infections,
+         healthy_pool_treat = healthy_pool,
+         prop_treat = prop,
+         km_survival_treat = km_survival,
+         km_helpercol1_treat = km_helpercol1,
+         km_stan_error_treat = km_stan_error,
+         km_95conf_treat = km_95conf,
+         km_95upper_treat = km_95upper,
+         km_95lower_treat = km_95lower)
+
+controls <- tidyplants_cdf %>%
+  filter(ecotype == "Col") %>%
+  rename(total_infections_ctrl = total_infections,
+         Ntot_ctrl = Ntot,
+         Nobs_ctrl = Nobs,
+         Ncens_ctrl = Ncens,
+         ycens_ctrl = ycens,
+         new_infections_ctrl = new_infections,
+         healthy_pool_ctrl = healthy_pool,
+         prop_ctrl = prop,
+         km_survival_ctrl = km_survival,
+         km_helpercol1_ctrl = km_helpercol1,
+         km_stan_error_ctrl = km_stan_error,
+         km_95conf_ctrl = km_95conf,
+         km_95upper_ctrl = km_95upper,
+         km_95lower_ctrl = km_95lower)
+
+km_cdf <- left_join(treatments, controls, by = c("trial_name", "day"))
+
+km_cdf <- km_cdf %>%
+  mutate(Ntot_total = Ntot_ctrl + Ntot_treat,
+         new_infections_total = new_infections_ctrl + new_infections_treat,
+         healthy_pool_total = healthy_pool_treat + healthy_pool_ctrl)
+
+
+km_plot <- ggplot(data = km_cdf) + 
+  geom_step(aes(x = day, y = km_survival_treat), color = "Maroon", size = 1) +
+  geom_step(aes(x = day, y = km_survival_ctrl), color = "DodgerBlue4", size = 1) +
+  facet_grid(trial_name ~ ecotype.x) +
+  xlim(6,13) +
+  ylab("Survival Probability") +
+  xlab("Day")
+
+km_plot
 
 ```
 
-Below we have taken the Kaplan Meier estimate for the different trials and ecotypes. The control samples are plotted in red. The estimate of the Ecotypes survival function is plotted in blue.
 
-```{r kaplan-meier-estimate, echo=FALSE}
+# Using the `survival` and `survminer` packages to estimate the survival function
 
-Eco_list <- c("VIII-A", "VIII-B", "XI-2", "XI-A", "XI-B", "XI-K")
-Trial_list <- c("Test1LL", "Test2LL", "Test3LL", "Test4LL")
+Below is the code to calculate the survival function for the survival packages.
 
-splots <- list()
+```{r}
 
-for (eco in Eco_list){
-  for (trial in Trial_list) {
-    temp_df <- df_withcontrol %>% filter(Ecotype == eco, Trial.Name == trial)
-    surv_obj <- Surv(time = temp_df$First.Infection, event = ifelse(temp_df$Censored==0,1,0))
-    fit <- survfit(surv_obj ~ temp_df$Control, data = temp_df)
-    print(ggsurvplot(fit, data = temp_df, conf.int = TRUE, pval = TRUE, theme = theme_cowplot()))
+tidyplants <- read.csv("tidyplants.csv")
+
+trial_names_list <- list("Trial1LL",
+                         "Trial2LL",
+                         "Trial3LL",
+                         "Trial4LL")
+
+ecotypes_list <- list("VIII-A",
+                      "VIII-B",
+                      "XI-2",
+                      "XI-A",
+                      "XI-B",
+                      "XI-K")
+
+for (eco in ecotypes_list){
+  for (trial in trial_names_list){
+    temp_df <- tidyplants %>% filter((ecotype == eco | ecotype == "Col"), trial_name == trial)
+    surv_obj <- Surv(time = temp_df$first_infection, event = ifelse(temp_df$censored == 0, 1, 0))
+    fit <- survfit(formula = surv_obj ~ temp_df$ecotype, data = temp_df)
   }
 }
 
-
 ```
+
+
+
+
+
+
 
 
 

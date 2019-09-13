@@ -37,101 +37,149 @@ theme_set(theme_cowplot())
 
 # Importing the Data
 
-Our data has been stored in an excel file, `tidyplants.xlsx`. This excel file has two sheets containing the data in which we are interested. The first sheet shows the cumulative number of infected plants on a given day by trial and  ecotype. The other is a summary table showing the total number of plants of a given ecotype in each trial, along with the end breakdown of how many were infected vs how many survived. We can use the `merge` function to combine these two data table into one large dataframe. This table has been reproduced at the end of this notebook.
+Our data has been stored in an excel file, `tidyplants.xlsx`. This excel file has two sheets containing the data in which we are interested. The first sheet shows the cumulative number of infected plants on a given day by trial and  ecotype. The other is a summary table showing the total number of plants of a given ecotype in each trial, along with the end breakdown of how many were infected vs how many survived. We can use the `merge` function to combine these two data table into one larger dataframe. This table has been reproduced at the end of this notebook.
 
 ```{r load_data, message=FALSE, echo=FALSE}
 
 # Load data and cache a csv snapshot of the excel files
 
 # Load cdf data
-tidyplants_cdf <- read_excel("tidyplants.xlsx", sheet = "Survival_cdf.Data") %>%
-  gather(3:9, key = "Ecotype", value = "Total.Infections")
+tidyplants_cdf <- read_excel("Plant-Data-Messy-Format.xlsx", sheet = "tidyplants_cdf")%>%
+  rename(day = Day,
+         ecotype = Ecotype,
+         trial_name = `Trial Name`,
+         trial_index = `Trial Index`,
+         trial_date = `Trial Date`,
+         total_infections = `Total Infections`,
+         new_infections = `New Infections`,
+         Ntot = `Total Plants`,
+         Nobs = `Total Observed`,
+         Ncens = `Total Censored`,
+         ycens = `Censored Day`, 
+         XIK = `XI-K`,
+         XI2 = `XI-2`,
+         VIIIA = `VIII-A`,
+         VIIIB = `VIII-B`,
+         XIB = `XI-B`,
+         XIA = `XI-A`) %>%
+  mutate(trial_date = as.Date(trial_date))
 
-# Load sample size/number of censored-uncensored data
-sampleSizes_df <- read_excel("tidyplants.xlsx", sheet = "Survival.Sample.Sizes") %>%
-  write_csv("tidyplants_sampleSizes.csv")
+tidyplants_cdf$ecotype <- factor(tidyplants_cdf$ecotype, levels = c("Col", 
+                                                                    "XI-K",
+                                                                    "XI-2",
+                                                                    "VIII-A",
+                                                                    "VIII-B",
+                                                                    "XI-B",
+                                                                    "XI-A",
+                                                                    "CHUP",
+                                                                    "CHUP/XI-2",
+                                                                    "CHUP/XI-K",
+                                                                    "XI-K/XI-2",
+                                                                    "CHUP/XI-K/XI-2"))
 
-# merger dataframes and store in .csv file
-tidyplants_cdf <- merge(tidyplants_cdf, sampleSizes_df, by = c("Trial.Name", "Ecotype")) %>%
-  write_csv("tidyplants_cdf.csv")
+head(tidyplants_cdf)
 
 ```
 
-## Visualizing the cumulative number of infected plants
+We can look at how the number of infected plants grows with time for each trial and ecotype using `ggplot`.
 
-We have displayed the above data in a plot given below. The columns of the plot show the different Ecotypes of the plant. "Col" refers to the control line. Different rows show the different trials. It is hard to extract a lot of useful information from this because the amount of plants differ in each trial and ecotype.
 
 ```{r cdf_vis, echo=FALSE}
 
-cdf_plots <- ggplot(data = tidyplants_cdf, aes(x = Day, y = Total.Infections)) +
-  geom_point(color = "DodgerBlue4") + 
-  geom_line(color = "Black") +
-  facet_grid(Trial.Name ~ Ecotype)
+cdf_plots <- ggplot(data = tidyplants_cdf, aes(x = day, y = total_infections)) +
+  #geom_point(color = "DodgerBlue4") + 
+  geom_step(color = "Black") +
+  facet_grid(trial_date ~ ecotype) +
+  xlab("Day") +
+  ylab("Total Infections")
 
 cdf_plots
 
+ggsave("cdf_plots.pdf", plot = cdf_plots, height = 15, width = 15)
 ```
 
-## Visualizing the number of new infections each day
+# Transforming data so that we track each individual plant
 
 One of the questions we will be interested in looking at is how many new infections we observe on a given day. This will be helpful for some of the data analysis we will be conducting later. We have extracted this data and stored it in the dataframe below.
 
 ```{r data_reshaping, echo=FALSE}
-Sizes_df <- sampleSizes_df %>%
-  gather("Ncens", "Nobs", "Ntot",
-         key = Size.Type,
-         value = Sample.Size)
 
-tidyplants <- tidyplants_cdf %>%
-  mutate(New.Infections = ifelse(Total.Infections == 0, 0, Total.Infections - lag(Total.Infections))) %>%
-  filter(New.Infections !=0) 
+# Start by constructing plant data for uncensored plants
 
-y1 <- c()
-y2 <- c()
-y3 <- c()
+trial_name <- c()
+trial_index <- c()
+trial_date <- c()
+day <- c()
+ecotype <- c()
+XIK <- c()
+XI2 <- c()
+VIIIA <- c()
+VIIIB <- c()
+XIB <- c()
+XIA <- c()
+CHUP <- c()
 
-for(i in 1:nrow(tidyplants)){
-  y1 <- c(y1, rep(tidyplants$Trial[i], each = tidyplants$New.Infections[i]) )
-  y2 <- c(y2, rep(tidyplants$Ecotype[i], each = tidyplants$New.Infections[i]) )
-  y3 <- c(y3, rep(tidyplants$Day[i], each = tidyplants$New.Infections[i]) )
+
+for(i in 1:nrow(tidyplants_cdf %>% filter(day != 0))){
+  trial_name <- c(trial_name, rep(tidyplants_cdf$trial_name[i], each = tidyplants_cdf$new_infections[i]) )
+  trial_index <- c(trial_index, rep(tidyplants_cdf$trial_index[i], each = tidyplants_cdf$new_infections[i]) )
+  str(tidyplants_cdf$trial_date[i])
+  trial_date <- c(trial_index, rep(tidyplants_cdf$trial_date[i], each = tidyplants_cdf$new_infections[i]) )
+  day <- c(day, rep(tidyplants_cdf$day[i], each = tidyplants_cdf$new_infections[i]) )
+  ecotype <- c(ecotype, rep(as.character(tidyplants_cdf$ecotype[i]), each = tidyplants_cdf$new_infections[i]) )
+  XIK <- c(XIK, rep(tidyplants_cdf$XIK[i], each = tidyplants_cdf$new_infections[i]) )
+  XI2 <- c(XI2, rep(tidyplants_cdf$XI2[i], each = tidyplants_cdf$new_infections[i]) )
+  VIIIA <- c(VIIIA, rep(tidyplants_cdf$VIIIA[i], each = tidyplants_cdf$new_infections[i]) )
+  VIIIB <- c(VIIIB, rep(tidyplants_cdf$VIIIB[i], each = tidyplants_cdf$new_infections[i]) )
+  XIB <- c(XIB, rep(tidyplants_cdf$XIB[i], each = tidyplants_cdf$new_infections[i]) )
+  XIA <- c(XIA, rep(tidyplants_cdf$XIA[i], each = tidyplants_cdf$new_infections[i]) )
+  CHUP <- c(CHUP, rep(tidyplants_cdf$CHUP[i], each = tidyplants_cdf$new_infections[i]) )
 }
 
-df = data.frame(Trial.Name = y1,
-                Ecotype = y2,
-                First.Infection = y3)
+df_censored <- data.frame(trial_name = trial_name,
+                          trial_index = trial_index,
+                          trial_date = trial_date,
+                          day = day,
+                          ecotype = ecotype,
+                          XIK = XIK,
+                          XI2 = XI2,
+                          VIIIA = VIIIA,
+                          VIIIB = VIIIB,
+                          XIB = XIB,
+                          XIA = XIA,
+                          CHUP = CHUP) %>% 
+  mutate(censored = 0)
 
-df <- df %>% mutate(Censored = 0)
+df_censored$ecotype <- factor(df_censored$ecotype, levels = c("Col", 
+                                                              "XI-K",
+                                                              "XI-2",
+                                                              "VIII-A",
+                                                              "VIII-B",
+                                                              "XI-B",
+                                                              "XI-A",
+                                                              "CHUP",
+                                                              "CHUP/XI-2",
+                                                              "CHUP/XI-K",
+                                                              "XI-K/XI-2",
+                                                              "CHUP/XI-K/XI-2"))
 
-# Add in censored data
-
-y1 <- c()
-y2 <- c()
-y3 <- c()
-
-for(i in 1:nrow(sampleSizes_df)){
-  y1 <- c(y1, rep(sampleSizes_df$Trial.Name[i], each = sampleSizes_df$Ncens[i]))
-  y2 <- c(y2, rep(sampleSizes_df$Ecotype[i], each = sampleSizes_df$Ncens[i]))
-  y3 <- c(y3, rep(sampleSizes_df$ycens[i], each = sampleSizes_df$Ncens[i]))
-}
-
-censored_df = data.frame(Trial.Name = y1,
-                         Ecotype = y2,
-                         First.Infection = y3)
-
-censored_df <- censored_df %>% mutate(Censored = 1)
-
-df <- rbind(df, censored_df)
-
-df <- merge(df, sampleSizes_df, by = c("Trial.Name", "Ecotype")) %>%
-  write_csv("tidyplants.csv")
-
-newinfections_plot <- ggplot(data = df%>%filter(Censored == 0), aes(First.Infection)) +
-  geom_histogram(binwidth = 1, color = "Black", fill = "DodgerBlue4") +
-  facet_grid(Trial.Name ~ Ecotype)
-
-newinfections_plot
-
+head(df_censored,130)
 ```
+
+```{r}
+
+tp_hist <- ggplot(data = df_censored, aes(day)) +
+  geom_histogram(color = "Black", fill = "DodgerBlue4", binwidth = 1) + 
+  facet_grid(trial_date ~ ecotype)
+
+tp_hist
+
+ggsave("hist_plots.pdf", plot = tp_hist, height = 15, width = 15)
+```
+
+Now that we have our data exported out of the excel file and into `tidyplants.csv` and `tidyplants_cdf.csv` we can begin our analysis of the dataset.
+
+
 
 
 # Dataframes

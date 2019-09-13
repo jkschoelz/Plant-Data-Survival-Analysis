@@ -1,4 +1,4 @@
-Trial.Name,Ecotype,First.Infection,Censored,Ntot,Nobs,Ncens,ycens
+trial_name,ecotype,first_infection,censored,Ntot,Nobs,Ncens,ycens
 Test1LL,Col,8,0,18,11,7,14
 Test1LL,Col,8,0,18,11,7,14
 Test1LL,Col,10,0,18,11,7,14
