@@ -9,13 +9,11 @@ output:
     toc_depth: 2
 ---
 
-We have an experiment where we are looking at the behavior of different ecotypes of a certain species of plant. In the experiment, the plant are inoculated by a virus. They are then observed once a day for several days to see when virus symptoms become apparent. There is reason to believe that maybe some of the ecotypes can slow the infection of the plant. Eventually, we want to analyze the data to see if we can observe any effect in the time-to-event data. But first, we need to prep the data files for use.
+We have an experiment where we are looking at the behavior of a certain species of plant with different gene combinations that have been knocked out (different plant ecotypes). In this experiment we inoculate all of the plants with a virus. The plants are then observed once a day for several days to see if/when virus symptoms become apparent. Our goal is to determine whether or not the different genotypes take a different amount of time in order to show viral symptoms. We will analyze this plant data in a series of notebooks. In this notebook, we are getting our data into a clean/tidy format and visualizing some of the raw data.
 
-Right now, the data is stored in the file `tidyplants.xlsx`. We need to get the data into a format that is easier to work with. We want the data to be in a tidy format, where rows of the dataset are individual observations, and columns are variables. This is a little general, and there are a couple ways of arranging our data in a tidy format. The first is to consider each plant to be it's own observation. Then variables for the plant will be the name of the trial, the ecotype and the day in which the plant first exhibited symptoms, and whether or not data from the plant was censored. We will store the tidy data organized in this way `tidyplants.csv`.
+First, we set up the notebook, and load some useful libraries.
 
-The second way we could arrange our data is to consider each day as an observation. Then, variables of interest would be the trial, ecotype, number of plants exhibiting symptoms, total number of plants of a given ecotype in the trial, total number of censored plants of a given ecotype in the trial. We will store data organized in thsis way in the file `tidyplants_cdf.csv`.
-
-```{r setup, echo=FALSE, message=FALSE}
+```{r setup, echo=TRUE, message=FALSE}
 
 # Clear the environment
 rm(list = ls())
@@ -38,7 +36,7 @@ theme_set(theme_cowplot())
 
 # Importing the Data
 
-Our data has been stored in an excel file, `tidyplants.xlsx`. This excel file has two sheets containing the data in which we are interested. The first sheet shows the cumulative number of infected plants on a given day by trial and  ecotype. The other is a summary table showing the total number of plants of a given ecotype in each trial, along with the end breakdown of how many were infected vs how many survived. We can use the `merge` function to combine these two data table into one larger dataframe. This table has been reproduced at the end of this notebook.
+The data in which we are interested has been stored in an excel file `Plant-Data-Messy-Format.xlsx` in the `tidyplants_cdf` sheet. We want to import this data into a dataframe so we can work with it. Along the way, we will relabel some column names so that they are easier for us to code with, ensure that the ecotypes are listed in the proper order, as well as cache a snapshot of the data in `tidyplants_cdf.csv`. At the end of this notebook, the full dataset has been printed.
 
 ```{r load_data, message=FALSE, echo=FALSE}
 
@@ -78,11 +76,13 @@ tidyplants_cdf$ecotype <- factor(tidyplants_cdf$ecotype, levels = c("Col",
                                                                     "XI-K/XI-2",
                                                                     "CHUP/XI-K/XI-2"))
 
-head(tidyplants_cdf)
+tidyplants_cdf %>% write_csv("tidyplants_cdf.csv")
 
 ```
 
-We can look at how the number of infected plants grows with time for each trial and ecotype using `ggplot`.
+This dataset, as given, tracks what is happening for a given ecotype and trial, as a function of the data. It also keeps track of how many plants of an ecotype were in a given trial, and how many of the plants showed symptoms before the end of the trial.
+
+Lets trial and visualize the results of the trial in a simple plot. Since these are the raw results, it will be a little difficult to interpret. But it can be nice to see. Plots will show number of plants that have shown symptoms as a function of time. Plots have also been broken up into trial number and ecotype. The full plot is shown below.
 
 
 ```{r cdf_vis, echo=FALSE}
@@ -94,6 +94,20 @@ cdf_plots <- ggplot(data = tidyplants_cdf, aes(x = day, y = total_infections)) +
   scale_x_continuous(name = "Day",
                      limits = c(5,15))+
   ylab("Total Infections")
+
+cdf_plots
+cdf_plots1
+cdf_plots2
+cdf_plots3
+
+head()
+
+ggsave("cdf_plots.pdf", plot = cdf_plots, height = 15, width = 15)
+```
+
+Since the number of trials and ecotypes is so large, it is a little difficult to see all of the trials. We can remedy this by breaking up the plot into three plots. The initial trials (1-4) are shown in the first plot. The second trials (5-9) are shown in the second plot and the third plot consists of trials 10-15.
+
+```{r cdf_vis_2, echo + TRUE}
 
 cdf_plots1 <- ggplot(data = tidyplants_cdf %>% filter(trial_index == 1 | trial_index == 2 | trial_index == 3 | trial_index == 4), aes(x = day, y = total_infections)) +
   geom_point(color = "DodgerBlue4") + 
@@ -116,12 +130,6 @@ cdf_plots3 <- ggplot(data = tidyplants_cdf %>% filter(trial_index == 10 | trial_
   xlab("Day") +
   ylab("Total Infections")
 
-cdf_plots
-cdf_plots1
-cdf_plots2
-cdf_plots3
-
-ggsave("cdf_plots.pdf", plot = cdf_plots, height = 15, width = 15)
 ```
 
 # Transforming data so that we track each individual plant
@@ -188,7 +196,7 @@ df_censored$ecotype <- factor(df_censored$ecotype, levels = c("Col",
                                                               "XI-K/XI-2",
                                                               "CHUP/XI-K/XI-2"))
 
-head(df_censored,130)
+df_censored %>% write_csv("tidyplants.csv")
 ```
 
 ```{r}
@@ -234,8 +242,4 @@ knitr::kable(tidyplants_cdf)
 
 ## `tidyplants.csv`
 
-```{r tidyplants}
 
-knitr::kable(tidyplants)
-
-```

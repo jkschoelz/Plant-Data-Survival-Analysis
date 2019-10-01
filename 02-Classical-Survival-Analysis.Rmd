@@ -23,9 +23,6 @@ library(tidyverse)
 library(broom)
 library(tufte)
 library(cowplot)
-library(fastDummies)
-library(survival)
-library(survminer)
 
 #ggplot2 settings
 theme_set(theme_cowplot())
@@ -44,23 +41,10 @@ In the grid of plots below, we are looking at the number of new infections obser
 # Load data about new.infections pdf from csv file
 raw_df <- read.csv("tidyplants.csv")
 raw_cdf <- read.csv("tidyplants_cdf.csv")
-raw_cdf_with_control <- read.csv("tidyplants_cdf_withcontrol.csv")
 
-# Take the Ecotype Variable and separate it out into separate covariate columns
-df <- dummy_columns(raw_df, select_columns = c("ecotype"))
-df_withcontrol <- read.csv("tidyplants_withcontrol.csv")
+head(raw_df)
 
-# In general we will assumed censored plants do not show symptoms
-# This is an assumption, that we should evaluate the liklihood of it being true, given our fit
-uncensored_df <- df %>%
-  filter(censored == 0)
-
-# Plot data in 2D grid of histograms - Trial vs Ecotype
-real_hist <- ggplot(data = uncensored_df, aes(first_infection)) + 
-  geom_histogram(binwidth = 1, color = "Black", fill = "DodgerBlue4") + 
-  facet_grid(trial_name ~ ecotype)
-
-real_hist
+head(raw_cdf)
 
 ```
 
