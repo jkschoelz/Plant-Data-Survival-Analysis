@@ -78,6 +78,8 @@ tidyplants_cdf$ecotype <- factor(tidyplants_cdf$ecotype, levels = c("Col",
 
 tidyplants_cdf %>% write_csv("tidyplants_cdf.csv")
 
+head(tidyplants_cdf)
+
 ```
 
 This dataset, as given, tracks what is happening for a given ecotype and trial, as a function of the data. It also keeps track of how many plants of an ecotype were in a given trial, and how many of the plants showed symptoms before the end of the trial.
@@ -96,11 +98,6 @@ cdf_plots <- ggplot(data = tidyplants_cdf, aes(x = day, y = total_infections)) +
   ylab("Total Infections")
 
 cdf_plots
-cdf_plots1
-cdf_plots2
-cdf_plots3
-
-head()
 
 ggsave("cdf_plots.pdf", plot = cdf_plots, height = 15, width = 15)
 ```
@@ -157,7 +154,7 @@ CHUP <- c()
 for(i in 1:nrow(tidyplants_cdf %>% filter(day != 0))){
   trial_name <- c(trial_name, rep(tidyplants_cdf$trial_name[i], each = tidyplants_cdf$new_infections[i]) )
   trial_index <- c(trial_index, rep(tidyplants_cdf$trial_index[i], each = tidyplants_cdf$new_infections[i]) )
-  trial_date <- c(trial_index, rep(ymd(tidyplants_cdf$trial_date[i]), each = tidyplants_cdf$new_infections[i]) )
+  trial_date <- c(trial_date, rep(ymd(tidyplants_cdf$trial_date[i]), each = tidyplants_cdf$new_infections[i]) )
   day <- c(day, rep(tidyplants_cdf$day[i], each = tidyplants_cdf$new_infections[i]) )
   ecotype <- c(ecotype, rep(as.character(tidyplants_cdf$ecotype[i]), each = tidyplants_cdf$new_infections[i]) )
   XIK <- c(XIK, rep(tidyplants_cdf$XIK[i], each = tidyplants_cdf$new_infections[i]) )
@@ -197,6 +194,9 @@ df_censored$ecotype <- factor(df_censored$ecotype, levels = c("Col",
                                                               "CHUP/XI-K/XI-2"))
 
 df_censored %>% write_csv("tidyplants.csv")
+
+head(df_censored, 200)
+
 ```
 
 ```{r}
