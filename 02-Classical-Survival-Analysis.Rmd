@@ -57,13 +57,16 @@ With some slight changes to the `tidyplants_cdf.csv` file we can get the Kaplan-
 ```{r}
 
 tidyplants_cdf <- tidyplants_cdf %>%
-  mutate(km_survival = 1-total_infections/Ntot,
+  mutate(#trial_date = as.Date(trial_date, format = "%d.%m.%Y"),
+         km_survival = 1-total_infections/Ntot,
          healthy_pool = Ntot - total_infections,
          km_helpercol1 = new_infections/(healthy_pool + new_infections),
          km_stan_error = km_survival*sqrt(cumsum(km_helpercol1)),
          km_95conf = 1.96*km_stan_error,
          km_95upper = km_survival + km_95conf,
          km_95lower = km_survival - km_95conf)
+
+head(tidyplants_cdf)
 
 ```
 
