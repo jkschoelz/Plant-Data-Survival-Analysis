@@ -127,6 +127,10 @@ cdf_plots3 <- ggplot(data = tidyplants_cdf %>% filter(trial_index == 10 | trial_
   xlab("Day") +
   ylab("Total Infections")
 
+cdf_plots1
+cdf_plots2
+cdf_plots3
+
 ```
 
 # Transforming data so that we track each individual plant
