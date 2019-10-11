@@ -10,7 +10,13 @@ output:
 ---
 
 
-```{r setup, include=FALSE}
+In this notebook, we are looking how genotype of a given plant species will affect the plant resistance to disease. To do this we have data from the following experiment.
+
+Plants are of different genotypes are prepared. The plants are then all inoculated with the virus at the same time. Plants are observed once each day to see if symptoms have developed. The result is that we have a dataset with each plant labeled with an id, genotype, and when the plant developed local symptoms, and when it became generally symptomatic. There are several types of genotypes, and the experiment is repeated at different times of the year over a five year period.
+
+To begin the analysis, we load some useful libraries.
+
+```{r setup, message=FALSE, warning=FALSE}
 
 # Clear the environment
 rm(list = ls())
@@ -19,25 +25,11 @@ gc(reset = TRUE)
 # Notebook Settings
 knitr::opts_chunk$set(echo = TRUE)
 
-```
-
-
-In this notebook, we are looking how genotype of a given plant species will affect the plant resistance to disease. To do this we have data from the following experiment.
-
-Plants are of different genotypes are prepared. The plants are then all inoculated with the virus at the same time. Plants are observed once each day to see if symptoms have developed. The result is that we have a dataset with each plant labeled with an id, genotype, and when the plant developed local symptoms, and when it became generally symptomatic. There are several types of genotypes, and the experiment is repeated at different times of the year over a five year period.
-
-To begin the analysis, we load some useful libraries.
-
-```{r load_libraries, message=FALSE}
-
+# Libraries
 library(tidyverse)
-library(tidybayes)
 library(tufte)
 library(rstan)
 library(cowplot)
-library(fastDummies)
-library(survival)
-library(survminer)
 
 rstan_options(auto_write = TRUE)
 options(mc.cores = parallel::detectCores())
@@ -45,42 +37,26 @@ options(mc.cores = parallel::detectCores())
 #ggplot2 settings
 theme_set(theme_cowplot())
 
-
 ```
 
-# Importing and visualizing data
+# Importing data
 
 We can start by importing the data. From previous notebook, the data has already been organized into a tidy format. One thing we want to do is expand the Ecotype column into a series of indicator columns. This will eventually serve as the basis for the covariate matrix.
 
-```{r read-and-import-data}
+```{r read-and-import-data, message = FALSE}
 
-df <- read.csv("unpacked_plant_data.csv")
-# Take the Ecotype Variable and separate it out into covariate columns
-df <- dummy_columns(df, select_columns = c("Ecotype", "Trial.Name"))
+tidyplants <- read_csv("tidyplants.csv")
 
-real_hist <- ggplot(data = df %>% filter(Censored == 0), aes(First.Infection)) + 
-  geom_histogram(binwidth = 1, color = "Black", fill = "DodgerBlue4") + 
-  facet_grid(Trial.Name ~ Ecotype)
+head(tidyplants)
 
-real_hist
+# Separate out data for regression
+y = tidyplants$day
+X = as.matrix(tidyplants %>% select("XIK", "XI2", "VIIIA", "VIIIB", "XIB", "XIA", "CHUP"))
+trial_index = tidyplants$trial_index
+n_samples = dim(X)[1]
+n_covariates = dim(X)[2]
+
 ```
-
-## Kaplan Meier estimators
-
-We want to estimate the survival function for the various ecotypes. To start with, we are going to try to estimate the survival function using the Kaplan Meier estimator. We can do this using the `survival` package.
-
-```{r km-survival}
-
-surv_object <- Surv(time = df$First.Infection, event = ifelse(df$Censored==0, 1, 0))
-
-fit1 <- survfit(surv_object ~ df$Ecotype, data = df)
-
-#str(fit1)
-#summary(fit1)
-
-ggsurvplot(fit1, data = df) 
-```
-
 
 
 # Weibull survival model with complete pooling

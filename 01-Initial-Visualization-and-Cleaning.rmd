@@ -13,7 +13,7 @@ We have an experiment where we are looking at the behavior of a certain species 
 
 First, we set up the notebook, and load some useful libraries.
 
-```{r setup, echo=TRUE, message=FALSE}
+```{r setup, echo=TRUE, message = FALSE, warning = FALSE, results='hide'}
 
 # Clear the environment
 rm(list = ls())
